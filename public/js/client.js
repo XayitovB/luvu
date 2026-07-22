@@ -432,6 +432,11 @@
   }
 
   async function createPeer(peerId, name) {
+    // Must finish before touching the connection: an 'ice' signal for a brand-new
+    // peer can otherwise win the race and create it before media is ready,
+    // permanently locking in a connection with no outgoing track.
+    await ensureLocalMedia().catch(() => {});
+
     const { tile, video, empty, label } = createRemoteTile(peerId, name);
     const iceServers = await iceServersPromise;
     const pc = new RTCPeerConnection({ iceServers });
@@ -477,7 +482,6 @@
 
   async function handleWebrtcSignal({ from, signal }) {
     if (!signal || !from) return;
-    if (signal.type === 'offer') await ensureLocalMedia().catch(() => {});
     const entry = await getOrCreatePeer(from);
     try {
       if (signal.type === 'offer') {
