@@ -12,8 +12,6 @@
   const formCreate = document.getElementById('form-create');
   const formJoin = document.getElementById('form-join');
 
-  const roomCodeBtn = document.getElementById('room-code-btn');
-  const roomCodeValue = document.getElementById('room-code-value');
   const roomLinkBtn = document.getElementById('room-link-btn');
   const linkModal = document.getElementById('link-modal');
   const linkModalInput = document.getElementById('link-modal-input');
@@ -39,12 +37,16 @@
   const chatInput = document.getElementById('chat-input');
 
   const toastEl = document.getElementById('toast');
-  const versionBadge = document.getElementById('version-badge');
+  const versionPillLanding = document.getElementById('version-pill-landing');
+  const versionPillRoom = document.getElementById('version-pill-room');
 
   fetch('/api/version')
     .then((r) => r.json())
     .then(({ version, commit }) => {
-      versionBadge.textContent = `Luvu v${version} · ${commit}`;
+      [versionPillLanding, versionPillRoom].forEach((el) => {
+        el.textContent = `v${version}`;
+        el.title = `Build: ${commit}`;
+      });
     })
     .catch(() => {});
 
@@ -568,7 +570,6 @@
 
   async function enterRoom(code, people, video, messages) {
     roomCode = code;
-    roomCodeValue.textContent = code;
     switchToRoomView();
     viewLoading.classList.add('hidden');
     await ensureLocalMedia().catch(() => {});
@@ -638,11 +639,6 @@
       legacyCopy(text) ? ok() : fail();
     }
   }
-
-  roomCodeBtn.addEventListener('click', () => {
-    if (!roomCode) return;
-    copyToClipboard(roomCode, 'Xona kodi nusxalandi ✨');
-  });
 
   function showLinkModal(link) {
     linkModalInput.value = link;

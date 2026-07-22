@@ -782,18 +782,28 @@ input {
 
 .toast.hidden { opacity: 0; pointer-events: none; }
 
-.version-badge {
-  position: fixed;
-  left: 10px;
-  bottom: 8px;
-  z-index: 50;
-  font-size: 10.5px;
-  color: var(--text-dim);
-  opacity: 0.55;
+.version-pill {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-2);
+  background: rgba(255, 92, 138, 0.12);
+  border: 1px solid rgba(255, 92, 138, 0.3);
+  padding: 3px 10px;
+  border-radius: 999px;
+  vertical-align: middle;
   letter-spacing: 0.3px;
-  pointer-events: none;
-  font-family: 'Manrope', monospace;
 }
+
+.brand .version-pill {
+  margin-left: 4px;
+  font-size: 12px;
+}
+
+.room-header-left .version-pill {
+  margin-left: 2px;
+}
+
+.version-pill:empty { display: none; }
 
 /* ===================== LINK MODAL ===================== */
 

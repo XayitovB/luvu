@@ -1,4 +1,5 @@
 const path = require('path');
+const fs = require('fs');
 const express = require('express');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
@@ -20,6 +21,18 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: { origin: false },
+});
+
+// Cloudflare/browsers cache /css and /js by URL for hours. Stamping them with
+// the build's commit hash means each deploy gets a brand-new URL, so a stale
+// cached copy can never be served after an update — no manual purge needed.
+const indexHtml = fs
+  .readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8')
+  .replace('/css/style.css', `/css/style.css?v=${GIT_COMMIT}`)
+  .replace('/js/client.js', `/js/client.js?v=${GIT_COMMIT}`);
+
+app.get('/', (req, res) => {
+  res.type('html').send(indexHtml);
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
