@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Luvu — birga film ko'ramiz</title>
+<meta name="description" content="Ikkovingiz uchun shaxsiy xona: birga film tomosha qiling, chatlashing va kamera orqali gaplashing." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='24' font-size='24'%3E%F0%9F%92%95%3C/text%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+<div id="bg-glow" aria-hidden="true"></div>
+
+<div id="app">
+
+  <!-- ===================== LANDING VIEW ===================== -->
+  <section id="view-landing" class="view">
+    <div class="landing-wrap">
+      <div class="brand">
+        <span class="brand-heart">💕</span>
+        <h1>Luvu</h1>
+      </div>
+      <p class="tagline">Ikkovingiz uchun shaxsiy xona — birga film tomosha qiling, yozishing va bir-biringizni ko‘ring.</p>
+
+      <div id="landing-error" class="error-banner hidden" role="alert"></div>
+
+      <div class="landing-cards">
+        <form id="form-create" class="card">
+          <h2>Xona yaratish</h2>
+          <p class="card-hint">Yangi xona oching va havolani sevganingizga yuboring.</p>
+          <label for="create-name">Ismingiz</label>
+          <input id="create-name" name="name" type="text" maxlength="24" placeholder="Masalan: Diyor" required />
+          <button type="submit" class="btn btn-primary">
+            <span class="btn-label">Xona ochish</span>
+          </button>
+        </form>
+
+        <form id="form-join" class="card">
+          <h2>Xonaga qo‘shilish</h2>
+          <p class="card-hint">Sizga yuborilgan 6 xonali kodni kiriting.</p>
+          <label for="join-name">Ismingiz</label>
+          <input id="join-name" name="name" type="text" maxlength="24" placeholder="Masalan: Nilufar" required />
+          <label for="join-code">Xona kodi</label>
+          <input id="join-code" name="code" type="text" maxlength="6" placeholder="MASALAN: 7K9XQ2" autocapitalize="characters" required />
+          <button type="submit" class="btn btn-secondary">
+            <span class="btn-label">Qo‘shilish</span>
+          </button>
+        </form>
+      </div>
+
+      <div class="feature-row">
+        <div class="feature"><span>🎬</span> Sinxron video</div>
+        <div class="feature"><span>💬</span> Real vaqt chat</div>
+        <div class="feature"><span>📹</span> Kamera orqali suhbat</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== ROOM VIEW ===================== -->
+  <section id="view-room" class="view hidden">
+    <header class="room-header">
+      <div class="room-header-left">
+        <span class="brand-heart small">💕</span>
+        <span class="brand-name">Luvu</span>
+      </div>
+      <div class="room-header-center">
+        <button id="room-code-btn" class="room-code" title="Kodni nusxalash uchun bosing">
+          Xona: <strong id="room-code-value">------</strong>
+          <span class="copy-icon">⧉</span>
+        </button>
+        <button id="room-link-btn" class="room-code room-link" title="Taklif havolasini nusxalash uchun bosing">
+          🔗 Havola yuborish
+        </button>
+        <span id="peer-status" class="peer-status offline">Sherigingiz kutilmoqda…</span>
+      </div>
+      <div class="room-header-right">
+        <button id="leave-btn" class="btn btn-ghost">Chiqish</button>
+      </div>
+    </header>
+
+    <main class="room-main">
+      <div class="stage">
+        <div id="player-wrap">
+          <div id="yt-player"></div>
+
+          <div id="no-video-overlay" class="overlay">
+            <form id="form-video" class="video-form">
+              <h3>Film yoki video havolasini qo‘ying</h3>
+              <p>YouTube havolasini yopishtiring — ikkalangizda ham bir vaqtda ishga tushadi.</p>
+              <div class="video-form-row">
+                <input id="video-url" type="text" placeholder="https://youtube.com/watch?v=..." required />
+                <button type="submit" class="btn btn-primary">Yuklash</button>
+              </div>
+              <span id="video-error" class="field-error hidden"></span>
+            </form>
+          </div>
+        </div>
+
+        <button id="change-video-btn" class="btn btn-ghost change-video-btn hidden">Videoni almashtirish</button>
+
+        <div id="camera-dock">
+          <div class="cam-tile" id="remote-tile">
+            <video id="remote-video" autoplay playsinline></video>
+            <div class="cam-empty" id="remote-empty">Kamera kutilmoqda…</div>
+            <span class="cam-label" id="remote-label">Sherigingiz</span>
+          </div>
+          <div class="cam-tile" id="local-tile">
+            <video id="local-video" autoplay muted playsinline></video>
+            <span class="cam-label">Siz</span>
+          </div>
+        </div>
+
+        <div class="call-controls">
+          <button id="toggle-mic" class="call-btn" title="Mikrofon">🎤</button>
+          <button id="toggle-cam" class="call-btn" title="Kamera">📷</button>
+        </div>
+      </div>
+
+      <aside class="chat-panel">
+        <div class="chat-header">
+          <span>💬 Chat</span>
+        </div>
+        <div id="chat-messages" class="chat-messages"></div>
+        <form id="chat-form" class="chat-form" autocomplete="off">
+          <input id="chat-input" maxlength="500" placeholder="Xabar yozing…" autocomplete="off" />
+          <button type="submit" class="send-btn" title="Yuborish">➤</button>
+        </form>
+      </aside>
+    </main>
+  </section>
+
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/client.js"></script>
+</body>
+</html>

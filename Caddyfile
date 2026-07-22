@@ -1,0 +1,8 @@
+monvo.uz, www.monvo.uz {
+	tls internal
+
+	encode gzip
+
+	reverse_proxy app:3000
+}
+
