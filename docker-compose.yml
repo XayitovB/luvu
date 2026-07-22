@@ -8,8 +8,31 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
+      - TURN_SECRET=${TURN_SECRET:-}
+      - TURN_HOST=${TURN_HOST:-monvo.uz}
     expose:
       - "3000"
+
+  # TURN relay: lets camera calls connect even when both people are behind
+  # NAT/CGNAT (common on mobile carriers) and a direct STUN-only path fails.
+  coturn:
+    image: coturn/coturn:latest
+    restart: unless-stopped
+    network_mode: host
+    command:
+      - -n
+      - --log-file=stdout
+      - --listening-port=3478
+      - --min-port=49160
+      - --max-port=49200
+      - --realm=${TURN_HOST:-monvo.uz}
+      - --use-auth-secret
+      - --static-auth-secret=${TURN_SECRET:-}
+      - --no-cli
+      - --no-multicast-peers
+      - --fingerprint
+      - --total-quota=200
+      - --stale-nonce=600
 
   caddy:
     image: caddy:2-alpine

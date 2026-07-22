@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const express = require('express');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
@@ -8,6 +9,9 @@ const { version } = require('./package.json');
 
 const PORT = process.env.PORT || 3000;
 const GIT_COMMIT = process.env.GIT_COMMIT || 'dev';
+const TURN_SECRET = process.env.TURN_SECRET || '';
+const TURN_HOST = process.env.TURN_HOST || 'monvo.uz';
+const TURN_CREDENTIAL_TTL_SECONDS = 24 * 3600;
 const ROOM_CODE_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'; // no 0/O/1/I confusion
 const makeRoomCode = customAlphabet(ROOM_CODE_ALPHABET, 6);
 
@@ -39,6 +43,31 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/api/version', (req, res) => {
   res.json({ version, commit: GIT_COMMIT });
+});
+
+// Short-lived TURN credentials (coturn's REST-API / "use-auth-secret" scheme),
+// so the client never embeds a permanent shared TURN password.
+function generateTurnCredentials() {
+  const username = String(Math.floor(Date.now() / 1000) + TURN_CREDENTIAL_TTL_SECONDS);
+  const credential = crypto.createHmac('sha1', TURN_SECRET).update(username).digest('base64');
+  return { username, credential };
+}
+
+app.get('/api/ice-servers', (req, res) => {
+  const iceServers = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+  ];
+
+  if (TURN_SECRET) {
+    const { username, credential } = generateTurnCredentials();
+    iceServers.push(
+      { urls: `turn:${TURN_HOST}:3478?transport=udp`, username, credential },
+      { urls: `turn:${TURN_HOST}:3478?transport=tcp`, username, credential }
+    );
+  }
+
+  res.json({ iceServers });
 });
 
 // In-memory room store: code -> { users: Map<socketId, {name}>, video: {...} }

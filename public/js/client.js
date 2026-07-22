@@ -80,12 +80,12 @@
   }
   const myClientId = getClientId();
 
-  const RTC_CONFIG = {
-    iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
-    ],
-  };
+  // Fetched from the server so a TURN relay (needed when both people are behind
+  // NAT/CGNAT, e.g. mobile carriers) can be added without hardcoding secrets here.
+  const iceServersPromise = fetch('/api/ice-servers')
+    .then((r) => r.json())
+    .then((d) => d.iceServers)
+    .catch(() => [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }]);
 
   // ---------- Helpers ----------
   function showToast(msg, ms = 2600) {
@@ -414,15 +414,27 @@
     return timer;
   }
 
-  function getOrCreatePeer(peerId, name) {
-    let entry = peers.get(peerId);
-    if (entry) {
-      if (name) entry.label.textContent = name;
-      return entry;
-    }
+  const peerCreationPromises = new Map();
 
+  // Async (fetches ICE servers incl. TURN) — guarded against concurrent calls
+  // for the same peerId racing each other into creating duplicate connections.
+  function getOrCreatePeer(peerId, name) {
+    const existing = peers.get(peerId);
+    if (existing) {
+      if (name) existing.label.textContent = name;
+      return Promise.resolve(existing);
+    }
+    if (peerCreationPromises.has(peerId)) return peerCreationPromises.get(peerId);
+
+    const creation = createPeer(peerId, name).finally(() => peerCreationPromises.delete(peerId));
+    peerCreationPromises.set(peerId, creation);
+    return creation;
+  }
+
+  async function createPeer(peerId, name) {
     const { tile, video, empty, label } = createRemoteTile(peerId, name);
-    const pc = new RTCPeerConnection(RTC_CONFIG);
+    const iceServers = await iceServersPromise;
+    const pc = new RTCPeerConnection({ iceServers });
 
     if (localStream) {
       localStream.getTracks().forEach((track) => {
@@ -450,14 +462,14 @@
 
     const qualityTimer = monitorConnectionQuality(pc, tile);
 
-    entry = { pc, tile, video, empty, label, qualityTimer };
+    const entry = { pc, tile, video, empty, label, qualityTimer };
     peers.set(peerId, entry);
     return entry;
   }
 
   async function offerTo(peerId, name) {
     await ensureLocalMedia().catch(() => {});
-    const entry = getOrCreatePeer(peerId, name);
+    const entry = await getOrCreatePeer(peerId, name);
     const offer = await entry.pc.createOffer();
     await entry.pc.setLocalDescription(offer);
     socket.emit('webrtc-signal', { to: peerId, signal: { type: 'offer', sdp: entry.pc.localDescription } });
@@ -466,7 +478,7 @@
   async function handleWebrtcSignal({ from, signal }) {
     if (!signal || !from) return;
     if (signal.type === 'offer') await ensureLocalMedia().catch(() => {});
-    const entry = getOrCreatePeer(from);
+    const entry = await getOrCreatePeer(from);
     try {
       if (signal.type === 'offer') {
         await entry.pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
