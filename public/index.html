@@ -60,6 +60,14 @@
     </div>
   </section>
 
+  <!-- ===================== RECONNECT LOADING VIEW ===================== -->
+  <section id="view-loading" class="view hidden">
+    <div class="loading-wrap">
+      <span class="brand-heart">💕</span>
+      <p>Xonangizga qaytyapmiz…</p>
+    </div>
+  </section>
+
   <!-- ===================== ROOM VIEW ===================== -->
   <section id="view-room" class="view hidden">
     <header class="room-header">
@@ -103,15 +111,11 @@
         <button id="change-video-btn" class="btn btn-ghost change-video-btn hidden">Videoni almashtirish</button>
 
         <div id="camera-dock">
-          <div class="cam-tile" id="remote-tile">
-            <video id="remote-video" autoplay playsinline></video>
-            <div class="cam-empty" id="remote-empty">Kamera kutilmoqda…</div>
-            <span class="cam-label" id="remote-label">Sherigingiz</span>
-          </div>
           <div class="cam-tile" id="local-tile">
             <video id="local-video" autoplay muted playsinline></video>
             <span class="cam-label">Siz</span>
           </div>
+          <!-- remote peer tiles are inserted here dynamically by client.js -->
         </div>
 
         <div class="call-controls">

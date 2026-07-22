@@ -216,6 +216,23 @@ input {
 }
 .btn-ghost:hover { color: var(--text); border-color: var(--accent); }
 
+#view-loading {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-wrap {
+  text-align: center;
+  color: var(--text-dim);
+}
+
+.loading-wrap .brand-heart {
+  display: block;
+  margin: 0 auto 14px;
+}
+
 .feature-row {
   display: flex;
   justify-content: center;
@@ -428,10 +445,19 @@ input {
   position: absolute;
   right: 14px;
   bottom: 14px;
+  top: 14px;
   display: flex;
   flex-direction: column;
   gap: 10px;
   z-index: 6;
+  overflow-y: auto;
+  max-height: calc(100% - 28px);
+}
+
+#camera-dock::-webkit-scrollbar { width: 5px; }
+#camera-dock::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
 }
 
 .cam-tile {
@@ -449,6 +475,10 @@ input {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* Mirror only the self-view, like a real camera preview; remote peers stay unmirrored. */
+#local-tile video {
   transform: scaleX(-1);
 }
 

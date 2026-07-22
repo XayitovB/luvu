@@ -6,6 +6,7 @@
   // ---------- DOM refs ----------
   const viewLanding = document.getElementById('view-landing');
   const viewRoom = document.getElementById('view-room');
+  const viewLoading = document.getElementById('view-loading');
   const landingError = document.getElementById('landing-error');
 
   const formCreate = document.getElementById('form-create');
@@ -24,10 +25,8 @@
   const videoError = document.getElementById('video-error');
   const changeVideoBtn = document.getElementById('change-video-btn');
 
+  const cameraDock = document.getElementById('camera-dock');
   const localVideo = document.getElementById('local-video');
-  const remoteVideo = document.getElementById('remote-video');
-  const remoteEmpty = document.getElementById('remote-empty');
-  const remoteLabel = document.getElementById('remote-label');
   const toggleMicBtn = document.getElementById('toggle-mic');
   const toggleCamBtn = document.getElementById('toggle-cam');
 
@@ -40,6 +39,7 @@
   // ---------- State ----------
   let myName = '';
   let roomCode = null;
+  let roomPeopleCount = 1;
   let ytPlayer = null;
   let ytApiReady = false;
   let pendingVideoId = null;
@@ -48,9 +48,23 @@
   let seekWatcher = null;
 
   let localStream = null;
-  let pc = null;
+  let localMediaPromise = null;
+  const peers = new Map(); // peerId -> { pc, tile, video, empty, label }
   let micOn = true;
   let camOn = true;
+
+  function getClientId() {
+    let id;
+    try {
+      id = localStorage.getItem('luvu_client_id');
+    } catch (e) {}
+    if (!id) {
+      id = 'c_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      try { localStorage.setItem('luvu_client_id', id); } catch (e) {}
+    }
+    return id;
+  }
+  const myClientId = getClientId();
 
   const RTC_CONFIG = {
     iceServers: [
@@ -259,76 +273,131 @@
     setTimeout(() => (applyingRemoteVideoChange = false), 700);
   }
 
-  // ---------- WebRTC (camera call) ----------
-  async function initLocalMedia() {
-    try {
-      localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      localVideo.srcObject = localStream;
-      createPeerConnection();
-    } catch (err) {
-      showToast('Kamera yoki mikrofonga ruxsat berilmadi.');
+  // ---------- WebRTC (mesh camera call: one RTCPeerConnection per remote person) ----------
+  function ensureLocalMedia() {
+    if (!localMediaPromise) {
+      localMediaPromise = navigator.mediaDevices
+        .getUserMedia({ video: true, audio: true })
+        .then((stream) => {
+          localStream = stream;
+          localVideo.srcObject = stream;
+          return stream;
+        })
+        .catch((err) => {
+          showToast('Kamera yoki mikrofonga ruxsat berilmadi.');
+          throw err;
+        });
     }
+    return localMediaPromise;
   }
 
-  function createPeerConnection() {
-    if (pc) return;
-    pc = new RTCPeerConnection(RTC_CONFIG);
+  function createRemoteTile(peerId, name) {
+    const tile = document.createElement('div');
+    tile.className = 'cam-tile';
+    tile.dataset.peerId = peerId;
+
+    const video = document.createElement('video');
+    video.autoplay = true;
+    video.playsInline = true;
+
+    const empty = document.createElement('div');
+    empty.className = 'cam-empty';
+    empty.textContent = 'Ulanmoqda…';
+
+    const label = document.createElement('span');
+    label.className = 'cam-label';
+    label.textContent = name || 'Mehmon';
+
+    tile.appendChild(video);
+    tile.appendChild(empty);
+    tile.appendChild(label);
+    cameraDock.appendChild(tile);
+
+    return { tile, video, empty, label };
+  }
+
+  function getOrCreatePeer(peerId, name) {
+    let entry = peers.get(peerId);
+    if (entry) {
+      if (name) entry.label.textContent = name;
+      return entry;
+    }
+
+    const { tile, video, empty, label } = createRemoteTile(peerId, name);
+    const pc = new RTCPeerConnection(RTC_CONFIG);
 
     if (localStream) {
       localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
     }
 
     pc.ontrack = (event) => {
-      remoteVideo.srcObject = event.streams[0];
-      remoteEmpty.classList.add('hidden');
+      video.srcObject = event.streams[0];
+      empty.classList.add('hidden');
     };
 
     pc.onicecandidate = (event) => {
       if (event.candidate) {
-        socket.emit('webrtc-signal', { signal: { type: 'ice', candidate: event.candidate } });
+        socket.emit('webrtc-signal', { to: peerId, signal: { type: 'ice', candidate: event.candidate } });
       }
     };
 
     pc.onconnectionstatechange = () => {
-      if (pc && (pc.connectionState === 'failed' || pc.connectionState === 'disconnected')) {
-        remoteEmpty.classList.remove('hidden');
+      if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+        empty.classList.remove('hidden');
       }
     };
+
+    entry = { pc, tile, video, empty, label };
+    peers.set(peerId, entry);
+    return entry;
   }
 
-  async function startOffer() {
-    if (!pc) createPeerConnection();
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    socket.emit('webrtc-signal', { signal: { type: 'offer', sdp: pc.localDescription } });
+  async function offerTo(peerId, name) {
+    await ensureLocalMedia().catch(() => {});
+    const entry = getOrCreatePeer(peerId, name);
+    const offer = await entry.pc.createOffer();
+    await entry.pc.setLocalDescription(offer);
+    socket.emit('webrtc-signal', { to: peerId, signal: { type: 'offer', sdp: entry.pc.localDescription } });
   }
 
-  async function handleWebrtcSignal({ signal }) {
-    if (!signal) return;
-    if (!pc) createPeerConnection();
+  async function handleWebrtcSignal({ from, signal }) {
+    if (!signal || !from) return;
+    if (signal.type === 'offer') await ensureLocalMedia().catch(() => {});
+    const entry = getOrCreatePeer(from);
     try {
       if (signal.type === 'offer') {
-        await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        socket.emit('webrtc-signal', { signal: { type: 'answer', sdp: pc.localDescription } });
+        await entry.pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+        const answer = await entry.pc.createAnswer();
+        await entry.pc.setLocalDescription(answer);
+        socket.emit('webrtc-signal', { to: from, signal: { type: 'answer', sdp: entry.pc.localDescription } });
       } else if (signal.type === 'answer') {
-        await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+        await entry.pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
       } else if (signal.type === 'ice') {
-        await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+        await entry.pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
       }
     } catch (err) {
-      // ignore transient negotiation races between two peers
+      // ignore transient negotiation races between peers
     }
   }
 
-  function teardownCall() {
-    if (pc) {
-      pc.close();
-      pc = null;
+  function removePeer(peerId) {
+    const entry = peers.get(peerId);
+    if (!entry) return;
+    entry.pc.close();
+    entry.tile.remove();
+    peers.delete(peerId);
+  }
+
+  function teardownAllPeers() {
+    Array.from(peers.keys()).forEach(removePeer);
+  }
+
+  function updatePeopleStatus() {
+    if (roomPeopleCount <= 1) {
+      setPeerStatus(false, 'Boshqa hech kim yo‘q — havolani ulashing');
+    } else {
+      setPeerStatus(true, `${roomPeopleCount} kishi xonada 💚`);
     }
-    remoteVideo.srcObject = null;
-    remoteEmpty.classList.remove('hidden');
   }
 
   toggleMicBtn.addEventListener('click', () => {
@@ -347,17 +416,36 @@
     toggleCamBtn.textContent = camOn ? '📷' : '🚫';
   });
 
+  // ---------- Session persistence (survive an F5 refresh) ----------
+  const SESSION_KEY = 'luvu_session';
+
+  function saveSession(code, name) {
+    try { localStorage.setItem(SESSION_KEY, JSON.stringify({ code, name })); } catch (e) {}
+  }
+  function clearSession() {
+    try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
+  }
+  function loadSession() {
+    try {
+      const raw = localStorage.getItem(SESSION_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   // ---------- Room entry ----------
   formCreate.addEventListener('submit', (e) => {
     e.preventDefault();
     clearLandingError();
     myName = document.getElementById('create-name').value.trim() || 'Mehmon';
-    socket.emit('create-room', { name: myName }, (res) => {
+    socket.emit('create-room', { name: myName, clientId: myClientId }, (res) => {
       if (!res.ok) {
         showLandingError(res.error || 'Xona yaratib bo‘lmadi.');
         return;
       }
-      enterRoom(res.code, res.people);
+      saveSession(res.code, myName);
+      enterRoom(res.code, res.people, res.video, res.messages);
     });
   });
 
@@ -366,29 +454,28 @@
     clearLandingError();
     myName = document.getElementById('join-name').value.trim() || 'Mehmon';
     const code = document.getElementById('join-code').value.trim().toUpperCase();
-    socket.emit('join-room', { name: myName, code }, (res) => {
+    socket.emit('join-room', { name: myName, code, clientId: myClientId }, (res) => {
       if (!res.ok) {
         showLandingError(res.error || 'Qo‘shilib bo‘lmadi.');
         return;
       }
-      enterRoom(res.code, res.people, res.video);
+      saveSession(res.code, myName);
+      enterRoom(res.code, res.people, res.video, res.messages);
     });
   });
 
-  async function enterRoom(code, people, video) {
+  async function enterRoom(code, people, video, messages) {
     roomCode = code;
     roomCodeValue.textContent = code;
     switchToRoomView();
-    await initLocalMedia();
+    viewLoading.classList.add('hidden');
+    await ensureLocalMedia().catch(() => {});
 
-    const hasPeer = people && people.length > 1;
-    if (hasPeer) {
-      const other = people.find((p) => p.id !== socket.id);
-      setPeerStatus(true, `${other ? other.name : 'Sherigingiz'} ulandi 💚`);
-      remoteLabel.textContent = other ? other.name : 'Sherigingiz';
-    } else {
-      setPeerStatus(false, 'Sherigingiz kutilmoqda…');
-    }
+    chatMessages.innerHTML = '';
+    (messages || []).forEach(addChatMessage);
+
+    roomPeopleCount = (people && people.length) || 1;
+    updatePeopleStatus();
 
     if (video && video.url) {
       noVideoOverlay.classList.add('hidden');
@@ -397,12 +484,56 @@
     }
   }
 
+  // Auto-rejoin after a page refresh, or prefill the join form from an invite link.
+  function bootstrap() {
+    const session = loadSession();
+    if (session && session.code) {
+      viewLanding.classList.add('hidden');
+      viewLoading.classList.remove('hidden');
+      myName = session.name || 'Mehmon';
+      socket.emit('join-room', { name: myName, code: session.code, clientId: myClientId }, (res) => {
+        if (!res.ok) {
+          clearSession();
+          viewLoading.classList.add('hidden');
+          viewLanding.classList.remove('hidden');
+          showLandingError('Avvalgi xonangiz tugagan — yangi xona oching yoki qo‘shiling.');
+          prefillJoinFromUrl();
+          return;
+        }
+        enterRoom(res.code, res.people, res.video, res.messages);
+        showToast('Xonangizga qaytdingiz 💕');
+      });
+      return;
+    }
+    prefillJoinFromUrl();
+  }
+
+  function legacyCopy(text) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.top = '-1000px';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      const success = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return success;
+    } catch (e) {
+      return false;
+    }
+  }
+
   function copyToClipboard(text, doneMsg) {
-    const done = () => showToast(doneMsg);
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(done).catch(done);
+    const ok = () => showToast(doneMsg);
+    const fail = () => showToast('Nusxalab bo‘lmadi. Bu yerdan qo‘lda nusxalang: ' + text, 6000);
+
+    if (window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(ok).catch(() => (legacyCopy(text) ? ok() : fail()));
     } else {
-      done();
+      legacyCopy(text) ? ok() : fail();
     }
   }
 
@@ -427,20 +558,23 @@
     showToast('Taklif havolasi orqali keldingiz — ismingizni kiriting 💕');
     history.replaceState({}, '', location.pathname);
   }
-  prefillJoinFromUrl();
+  bootstrap();
 
   leaveBtn.addEventListener('click', () => leaveRoom());
 
   function leaveRoom() {
     socket.emit('leave-room');
-    teardownCall();
+    clearSession();
+    teardownAllPeers();
     if (localStream) {
       localStream.getTracks().forEach((t) => t.stop());
       localStream = null;
     }
+    localMediaPromise = null;
     if (seekWatcher) clearInterval(seekWatcher);
     ytPlayer = null;
     roomCode = null;
+    roomPeopleCount = 1;
     chatMessages.innerHTML = '';
     noVideoOverlay.classList.remove('hidden');
     changeVideoBtn.classList.add('hidden');
@@ -486,17 +620,18 @@
   socket.on('chat-message', addChatMessage);
 
   socket.on('peer-joined', ({ id, name }) => {
-    setPeerStatus(true, `${name} ulandi 💚`);
-    remoteLabel.textContent = name;
+    roomPeopleCount++;
+    updatePeopleStatus();
     addSystemMessage(`${name} xonaga qo‘shildi`);
-    if (localStream) startOffer();
+    offerTo(id, name);
   });
 
-  socket.on('peer-left', () => {
-    setPeerStatus(false, 'Sherigingiz chiqib ketdi');
-    remoteLabel.textContent = 'Sherigingiz';
-    addSystemMessage('Sherigingiz xonadan chiqib ketdi');
-    teardownCall();
+  socket.on('peer-left', ({ id }) => {
+    const name = peers.get(id)?.label.textContent || 'Sherigingiz';
+    roomPeopleCount = Math.max(1, roomPeopleCount - 1);
+    updatePeopleStatus();
+    addSystemMessage(`${name} xonadan chiqib ketdi`);
+    removePeer(id);
   });
 
   socket.on('video-load', ({ videoId }) => {
