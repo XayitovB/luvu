@@ -7,9 +7,9 @@
     "start": "node server.js",
     "dev": "node --watch server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": ["watch-party", "webrtc", "socket.io", "video-chat", "youtube-sync"],
+  "author": "Bunyod Xayitov",
+  "license": "MIT",
   "type": "commonjs",
   "dependencies": {
     "express": "^5.2.1",
