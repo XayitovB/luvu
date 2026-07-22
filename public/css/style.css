@@ -439,7 +439,11 @@ input {
 @media (max-width: 900px) {
   .room-main {
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto;
+    /* An "auto" row here sizes to whatever fits, not to what its children
+       actually need — the camera strip + video-load card + call buttons
+       were getting squeezed into ~275px and stacking on top of each other.
+       A definite height fixes that; the chat row just gets what's left. */
+    grid-template-rows: 62vh auto;
   }
 }
 
@@ -488,12 +492,19 @@ input {
   backdrop-filter: blur(6px);
 }
 
-/* On narrow screens the camera dock sits top-right and would otherwise
-   overlap this card (hiding the submit button behind the tiles). */
+/* On narrow screens the camera dock sits along the top and would otherwise
+   overlap this card — reserve exactly its height as a gap instead of
+   guessing, so nothing (title included) ever sits underneath it. */
 @media (max-width: 640px) {
   .overlay {
-    align-items: flex-end;
-    padding-bottom: 28px;
+    align-items: flex-start;
+    top: 110px;
+    bottom: 76px; /* also clear the mic/camera buttons pinned to the stage's bottom */
+    padding: 14px 20px;
+    overflow-y: auto;
+  }
+  .video-form {
+    padding: 18px;
   }
   .video-form-row {
     flex-direction: column;
@@ -558,16 +569,29 @@ input {
 }
 
 @media (max-width: 640px) {
-  /* Only reserve as much height as the tiles actually need, instead of
-     stretching to the bottom — that's the space the video-load card needs. */
+  /* Row instead of column: a single ~80px-tall strip instead of tiles
+     stacking down the screen, so it only ever grazes the very top of the
+     video-load card instead of covering its title/description. */
   #camera-dock {
     bottom: auto;
-    max-height: 50%;
+    max-height: none;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    left: 14px;
   }
 
   .cam-tile {
-    width: 96px;
-    height: 72px;
+    width: 84px;
+    height: 64px;
+  }
+
+  .overlay .video-form h3 {
+    font-size: 17px;
+  }
+
+  .overlay .video-form p {
+    display: none;
   }
 }
 
