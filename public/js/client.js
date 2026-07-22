@@ -162,7 +162,10 @@
     }
   }
 
+  let lastMessageTs = 0;
+
   function addChatMessage({ id, name, text, ts }) {
+    lastMessageTs = Math.max(lastMessageTs, ts || Date.now());
     const mine = id === socket.id;
     const wrap = document.createElement('div');
     wrap.className = 'msg ' + (mine ? 'mine' : 'theirs');
@@ -260,12 +263,20 @@
 
   function startSeekWatcher() {
     if (seekWatcher) clearInterval(seekWatcher);
+    let lastCheckWallTime = Date.now();
     seekWatcher = setInterval(() => {
+      const now = Date.now();
+      const elapsedSeconds = (now - lastCheckWallTime) / 1000;
+      lastCheckWallTime = now;
+
       if (!ytPlayer || applyingRemoteVideoChange || typeof YT === 'undefined') return;
       if (typeof ytPlayer.getPlayerState !== 'function') return;
       if (ytPlayer.getPlayerState() !== YT.PlayerState.PLAYING) return;
       const t = ytPlayer.getCurrentTime();
-      const expected = lastKnownTime + 1;
+      // Compare against actual wall-clock elapsed time, not a fixed 1s tick —
+      // a backgrounded/throttled tab can delay this callback by many seconds,
+      // which would otherwise look exactly like a manual seek and misfire.
+      const expected = lastKnownTime + elapsedSeconds;
       if (Math.abs(t - expected) > 1.5) {
         socket.emit('video-sync', { type: 'seek', currentTime: t });
       }
@@ -300,6 +311,14 @@
   const MAX_VIDEO_BITRATE = 800_000; // ~800kbps ceiling, plenty for the resolution above
 
   function ensureLocalMedia() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      if (!localMediaPromise) {
+        showToast('Bu brauzer kamera/mikrofonni qo‘llamaydi — chat va videoni baribir ishlatishingiz mumkin.');
+        localMediaPromise = Promise.reject(new Error('getUserMedia unsupported'));
+        localMediaPromise.catch(() => {}); // mark as handled so it never becomes an unhandled rejection
+      }
+      return localMediaPromise;
+    }
     if (!localMediaPromise) {
       localMediaPromise = navigator.mediaDevices
         .getUserMedia({
@@ -448,6 +467,8 @@
       });
     }
 
+    const entry = { pc, tile, video, empty, label, qualityTimer: null, isOfferer: false, restarting: false };
+
     pc.ontrack = (event) => {
       video.srcObject = event.streams[0];
       empty.classList.add('hidden');
@@ -463,11 +484,19 @@
       if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
         empty.classList.remove('hidden');
       }
+      // A transient network blip can drop an established call without the
+      // socket itself disconnecting; without this it stays dead until someone
+      // manually leaves and rejoins. Only the original offerer restarts —
+      // the other side just answers the renegotiation like any other offer.
+      if (pc.connectionState === 'failed' && entry.isOfferer && !entry.restarting) {
+        entry.restarting = true;
+        restartIce(entry, peerId)
+          .catch(() => {})
+          .finally(() => (entry.restarting = false));
+      }
     };
 
-    const qualityTimer = monitorConnectionQuality(pc, tile);
-
-    const entry = { pc, tile, video, empty, label, qualityTimer };
+    entry.qualityTimer = monitorConnectionQuality(pc, tile);
     peers.set(peerId, entry);
     return entry;
   }
@@ -475,7 +504,14 @@
   async function offerTo(peerId, name) {
     await ensureLocalMedia().catch(() => {});
     const entry = await getOrCreatePeer(peerId, name);
+    entry.isOfferer = true;
     const offer = await entry.pc.createOffer();
+    await entry.pc.setLocalDescription(offer);
+    socket.emit('webrtc-signal', { to: peerId, signal: { type: 'offer', sdp: entry.pc.localDescription } });
+  }
+
+  async function restartIce(entry, peerId) {
+    const offer = await entry.pc.createOffer({ iceRestart: true });
     await entry.pc.setLocalDescription(offer);
     socket.emit('webrtc-signal', { to: peerId, signal: { type: 'offer', sdp: entry.pc.localDescription } });
   }
@@ -783,6 +819,32 @@
   socket.on('video-sync', applyRemoteVideoSync);
 
   socket.on('webrtc-signal', handleWebrtcSignal);
+
+  // A dropped connection (common on mobile data) gets a new socket id on
+  // reconnect, and the server has already forgotten the old membership —
+  // without this, the room would look fine locally but be silently dead
+  // (chat/video-sync/signaling all get dropped server-side because
+  // currentRoomCode is null on the new connection).
+  let hasConnectedOnce = false;
+  socket.on('connect', () => {
+    if (!hasConnectedOnce) {
+      hasConnectedOnce = true;
+      return;
+    }
+    if (!roomCode) return;
+
+    socket.emit('join-room', { name: myName, code: roomCode, clientId: myClientId }, (res) => {
+      if (!res.ok) {
+        showToast('Xona endi mavjud emas — sahifani yangilang.');
+        return;
+      }
+      teardownAllPeers(); // stale from before the drop; fresh 'peer-joined' events re-establish calls
+      roomPeopleCount = (res.people && res.people.length) || 1;
+      updatePeopleStatus();
+      (res.messages || []).filter((m) => m.ts > lastMessageTs).forEach(addChatMessage);
+      showToast('Qayta ulandi 🔄');
+    });
+  });
 
   socket.on('connect_error', () => {
     showToast('Serverga ulanishda muammo yuz berdi.');

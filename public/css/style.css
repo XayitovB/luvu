@@ -488,6 +488,18 @@ input {
   backdrop-filter: blur(6px);
 }
 
+/* On narrow screens the camera dock sits top-right and would otherwise
+   overlap this card (hiding the submit button behind the tiles). */
+@media (max-width: 640px) {
+  .overlay {
+    align-items: flex-end;
+    padding-bottom: 28px;
+  }
+  .video-form-row {
+    flex-direction: column;
+  }
+}
+
 .video-form h3 {
   margin: 0 0 6px;
   font-family: 'Poppins', sans-serif;
@@ -543,6 +555,20 @@ input {
   z-index: 6;
   overflow-y: auto;
   max-height: calc(100% - 28px);
+}
+
+@media (max-width: 640px) {
+  /* Only reserve as much height as the tiles actually need, instead of
+     stretching to the bottom — that's the space the video-load card needs. */
+  #camera-dock {
+    bottom: auto;
+    max-height: 50%;
+  }
+
+  .cam-tile {
+    width: 96px;
+    height: 72px;
+  }
 }
 
 #camera-dock::-webkit-scrollbar { width: 5px; }

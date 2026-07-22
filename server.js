@@ -20,8 +20,11 @@ const MAX_NAME_LENGTH = 24;
 const MAX_MESSAGE_LENGTH = 500;
 const MAX_HISTORY = 200;
 const ROOM_EMPTY_GRACE_MS = 45000; // keep an empty room alive briefly so a page refresh can rejoin
+const MAX_ROOMS_PER_SOCKET = 10; // basic abuse guard against a single connection spamming create-room
+const YOUTUBE_ID_RE = /^[a-zA-Z0-9_-]{11}$/;
 
 const app = express();
+app.set('trust proxy', true); // behind Caddy + Cloudflare
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: { origin: false },
@@ -118,9 +121,16 @@ function scheduleRoomCleanup(room) {
 
 io.on('connection', (socket) => {
   let currentRoomCode = null;
+  let roomsCreatedBySocket = 0;
 
   socket.on('create-room', (payload, ack) => {
     if (typeof ack !== 'function') return;
+    if (roomsCreatedBySocket >= MAX_ROOMS_PER_SOCKET) {
+      ack({ ok: false, error: 'Juda ko‘p xona yaratildi. Sahifani yangilab qayta urinib ko‘ring.' });
+      return;
+    }
+    roomsCreatedBySocket++;
+
     const name = sanitizeName(payload && payload.name);
     const clientId = typeof payload?.clientId === 'string' ? payload.clientId.slice(0, 64) : null;
     const room = createRoom();
@@ -193,8 +203,8 @@ io.on('connection', (socket) => {
     if (!currentRoomCode) return;
     const room = rooms.get(currentRoomCode);
     if (!room) return;
-    const videoId = typeof payload?.videoId === 'string' ? payload.videoId.slice(0, 32) : '';
-    if (!videoId) return;
+    const videoId = typeof payload?.videoId === 'string' ? payload.videoId : '';
+    if (!YOUTUBE_ID_RE.test(videoId)) return;
 
     room.video = { url: videoId, isPlaying: false, currentTime: 0 };
     socket.to(currentRoomCode).emit('video-load', { videoId, from: socket.id });
