@@ -179,7 +179,7 @@
     const time = new Date(ts || Date.now());
     const hh = String(time.getHours()).padStart(2, '0');
     const mm = String(time.getMinutes()).padStart(2, '0');
-    meta.textContent = `${mine ? 'Siz' : name} • ${hh}:${mm}`;
+    meta.textContent = `${mine ? 'You' : name} • ${hh}:${mm}`;
 
     wrap.appendChild(bubble);
     wrap.appendChild(meta);
@@ -313,7 +313,7 @@
   function ensureLocalMedia() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       if (!localMediaPromise) {
-        showToast('Bu brauzer kamera/mikrofonni qo‘llamaydi — chat va videoni baribir ishlatishingiz mumkin.');
+        showToast('This browser doesn’t support camera/microphone — you can still use chat and video.');
         localMediaPromise = Promise.reject(new Error('getUserMedia unsupported'));
         localMediaPromise.catch(() => {}); // mark as handled so it never becomes an unhandled rejection
       }
@@ -331,7 +331,7 @@
           return stream;
         })
         .catch((err) => {
-          showToast('Kamera yoki mikrofonga ruxsat berilmadi.');
+          showToast('Camera or microphone access was denied.');
           throw err;
         });
     }
@@ -349,11 +349,11 @@
 
     const empty = document.createElement('div');
     empty.className = 'cam-empty';
-    empty.textContent = 'Ulanmoqda…';
+    empty.textContent = 'Connecting…';
 
     const label = document.createElement('span');
     label.className = 'cam-label';
-    label.textContent = name || 'Mehmon';
+    label.textContent = name || 'Guest';
 
     tile.appendChild(video);
     tile.appendChild(empty);
@@ -378,7 +378,7 @@
   function monitorConnectionQuality(pc, tile) {
     const dot = document.createElement('span');
     dot.className = 'quality-dot quality-good';
-    dot.title = 'Ulanish sifati';
+    dot.title = 'Connection quality';
     tile.appendChild(dot);
 
     let prevLost = 0;
@@ -420,7 +420,7 @@
           badStreak++;
           if (badStreak >= 3 && !warnedOnce) {
             warnedOnce = true;
-            showToast('Internet sekin ko‘rinmoqda — kamerani o‘chirib, faqat ovozli suhbatlashsangiz sifat yaxshilanadi 📶', 6500);
+            showToast('Your connection looks slow — turning off your camera and switching to audio-only will improve quality 📶', 6500);
           }
         } else {
           badStreak = 0;
@@ -550,9 +550,9 @@
 
   function updatePeopleStatus() {
     if (roomPeopleCount <= 1) {
-      setPeerStatus(false, 'Boshqa hech kim yo‘q — havolani ulashing');
+      setPeerStatus(false, 'No one else here yet — share the link');
     } else {
-      setPeerStatus(true, `${roomPeopleCount} kishi xonada 💚`);
+      setPeerStatus(true, `${roomPeopleCount} people in the room 💚`);
     }
   }
 
@@ -594,10 +594,10 @@
   formCreate.addEventListener('submit', (e) => {
     e.preventDefault();
     clearLandingError();
-    myName = document.getElementById('create-name').value.trim() || 'Mehmon';
+    myName = document.getElementById('create-name').value.trim() || 'Guest';
     socket.emit('create-room', { name: myName, clientId: myClientId }, (res) => {
       if (!res.ok) {
-        showLandingError(res.error || 'Xona yaratib bo‘lmadi.');
+        showLandingError(res.error || 'Couldn’t create the room.');
         return;
       }
       saveSession(res.code, myName);
@@ -608,11 +608,11 @@
   formJoin.addEventListener('submit', (e) => {
     e.preventDefault();
     clearLandingError();
-    myName = document.getElementById('join-name').value.trim() || 'Mehmon';
+    myName = document.getElementById('join-name').value.trim() || 'Guest';
     const code = document.getElementById('join-code').value.trim().toUpperCase();
     socket.emit('join-room', { name: myName, code, clientId: myClientId }, (res) => {
       if (!res.ok) {
-        showLandingError(res.error || 'Qo‘shilib bo‘lmadi.');
+        showLandingError(res.error || 'Couldn’t join.');
         return;
       }
       saveSession(res.code, myName);
@@ -645,18 +645,18 @@
     if (session && session.code) {
       viewLanding.classList.add('hidden');
       viewLoading.classList.remove('hidden');
-      myName = session.name || 'Mehmon';
+      myName = session.name || 'Guest';
       socket.emit('join-room', { name: myName, code: session.code, clientId: myClientId }, (res) => {
         if (!res.ok) {
           clearSession();
           viewLoading.classList.add('hidden');
           viewLanding.classList.remove('hidden');
-          showLandingError('Avvalgi xonangiz tugagan — yangi xona oching yoki qo‘shiling.');
+          showLandingError('Your previous room has ended — open a new one or join another.');
           prefillJoinFromUrl();
           return;
         }
         enterRoom(res.code, res.people, res.video, res.messages);
-        showToast('Xonangizga qaytdingiz 💕');
+        showToast('You’re back in your room 💕');
       });
       return;
     }
@@ -683,7 +683,7 @@
 
   function copyToClipboard(text, doneMsg) {
     const ok = () => showToast(doneMsg);
-    const fail = () => showToast('Nusxalab bo‘lmadi. Bu yerdan qo‘lda nusxalang: ' + text, 6000);
+    const fail = () => showToast('Couldn’t copy. Copy it manually from here: ' + text, 6000);
 
     if (window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(ok).catch(() => (legacyCopy(text) ? ok() : fail()));
@@ -708,12 +708,12 @@
   roomLinkBtn.addEventListener('click', () => {
     const link = `${location.origin}/?room=${roomCode || ''}`;
     showLinkModal(link);
-    copyToClipboard(link, 'Taklif havolasi nusxalandi 💌 — endi qizingizga yuboring');
+    copyToClipboard(link, 'Invite link copied 💌 — now send it to your partner');
   });
 
   linkModalCopyBtn.addEventListener('click', () => {
     linkModalInput.select();
-    copyToClipboard(linkModalInput.value, 'Nusxalandi ✨');
+    copyToClipboard(linkModalInput.value, 'Copied ✨');
   });
 
   linkModalCloseBtn.addEventListener('click', hideLinkModal);
@@ -731,7 +731,7 @@
     document.getElementById('form-join').classList.remove('hidden');
     document.getElementById('landing-cards').classList.remove('single');
     document.getElementById('join-name').focus();
-    showToast('Taklif havolasi orqali keldingiz — ismingizni kiriting 💕');
+    showToast('You arrived via an invite link — enter your name 💕');
     history.replaceState({}, '', location.pathname);
   }
   bootstrap();
@@ -768,7 +768,7 @@
     videoError.classList.add('hidden');
     const id = extractYouTubeId(videoUrlInput.value);
     if (!id) {
-      videoError.textContent = 'Havola noto‘g‘ri ko‘rinadi. YouTube havolasini tekshiring.';
+      videoError.textContent = 'That link doesn’t look right. Check the YouTube URL.';
       videoError.classList.remove('hidden');
       return;
     }
@@ -798,15 +798,15 @@
   socket.on('peer-joined', ({ id, name }) => {
     roomPeopleCount++;
     updatePeopleStatus();
-    addSystemMessage(`${name} xonaga qo‘shildi`);
+    addSystemMessage(`${name} joined the room`);
     offerTo(id, name);
   });
 
   socket.on('peer-left', ({ id }) => {
-    const name = peers.get(id)?.label.textContent || 'Sherigingiz';
+    const name = peers.get(id)?.label.textContent || 'Your partner';
     roomPeopleCount = Math.max(1, roomPeopleCount - 1);
     updatePeopleStatus();
-    addSystemMessage(`${name} xonadan chiqib ketdi`);
+    addSystemMessage(`${name} left the room`);
     removePeer(id);
   });
 
@@ -835,18 +835,18 @@
 
     socket.emit('join-room', { name: myName, code: roomCode, clientId: myClientId }, (res) => {
       if (!res.ok) {
-        showToast('Xona endi mavjud emas — sahifani yangilang.');
+        showToast('This room no longer exists — please refresh the page.');
         return;
       }
       teardownAllPeers(); // stale from before the drop; fresh 'peer-joined' events re-establish calls
       roomPeopleCount = (res.people && res.people.length) || 1;
       updatePeopleStatus();
       (res.messages || []).filter((m) => m.ts > lastMessageTs).forEach(addChatMessage);
-      showToast('Qayta ulandi 🔄');
+      showToast('Reconnected 🔄');
     });
   });
 
   socket.on('connect_error', () => {
-    showToast('Serverga ulanishda muammo yuz berdi.');
+    showToast('There was a problem connecting to the server.');
   });
 })();

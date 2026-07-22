@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="uz">
+<html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Luvu — birga film ko'ramiz</title>
-<meta name="description" content="Ikkovingiz uchun shaxsiy xona: birga film tomosha qiling, chatlashing va kamera orqali gaplashing." />
+<title>Luvu — watch together</title>
+<meta name="description" content="A private room for two: watch a movie together, chat, and talk over camera." />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='24' font-size='24'%3E%F0%9F%92%95%3C/text%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -25,38 +25,38 @@
         <h1>Luvu</h1>
         <span class="version-pill" id="version-pill-landing"></span>
       </div>
-      <p class="tagline">Ikkovingiz uchun shaxsiy xona — birga film tomosha qiling, yozishing va bir-biringizni ko‘ring.</p>
+      <p class="tagline">A private room for the two of you — watch a movie together, chat, and see each other.</p>
 
       <div id="landing-error" class="error-banner hidden" role="alert"></div>
 
       <div id="landing-cards" class="landing-cards single">
         <form id="form-create" class="card">
-          <h2><span>💞</span> Xona yaratish</h2>
-          <p class="card-hint">Yangi xona oching va taklif havolasini sevganingizga yuboring.</p>
-          <label for="create-name">Ismingiz</label>
-          <input id="create-name" name="name" type="text" maxlength="24" placeholder="Masalan: Diyor" required />
+          <h2><span>💞</span> Create a room</h2>
+          <p class="card-hint">Open a new room and send the invite link to your partner.</p>
+          <label for="create-name">Your name</label>
+          <input id="create-name" name="name" type="text" maxlength="24" placeholder="e.g. Alex" required />
           <button type="submit" class="btn btn-primary">
-            <span class="btn-label">Xona ochish ✨</span>
+            <span class="btn-label">Open room ✨</span>
           </button>
-          <p class="card-footnote">🔒 Xonaga qo‘shilish faqat taklif havolasi orqali bo‘ladi — kod qo‘lda kiritilmaydi.</p>
+          <p class="card-footnote">🔒 Joining a room only works via an invite link — there's no code to type in.</p>
         </form>
 
         <form id="form-join" class="card hidden">
-          <h2><span>👋</span> Xonaga qo‘shilish</h2>
-          <p class="card-hint">Sizni taklif havolasi orqali chaqirishdi — ismingizni kiriting.</p>
-          <label for="join-name">Ismingiz</label>
-          <input id="join-name" name="name" type="text" maxlength="24" placeholder="Masalan: Nilufar" required />
+          <h2><span>👋</span> Join a room</h2>
+          <p class="card-hint">You were invited via a link — just enter your name.</p>
+          <label for="join-name">Your name</label>
+          <input id="join-name" name="name" type="text" maxlength="24" placeholder="e.g. Sam" required />
           <input id="join-code" name="code" type="hidden" />
           <button type="submit" class="btn btn-secondary">
-            <span class="btn-label">Qo‘shilish</span>
+            <span class="btn-label">Join</span>
           </button>
         </form>
       </div>
 
       <div class="feature-row">
-        <div class="feature"><span>🎬</span> Sinxron video</div>
-        <div class="feature"><span>💬</span> Real vaqt chat</div>
-        <div class="feature"><span>📹</span> Kamera orqali suhbat</div>
+        <div class="feature"><span>🎬</span> Synced video</div>
+        <div class="feature"><span>💬</span> Real-time chat</div>
+        <div class="feature"><span>📹</span> Camera calls</div>
       </div>
     </div>
   </section>
@@ -65,7 +65,7 @@
   <section id="view-loading" class="view hidden">
     <div class="loading-wrap">
       <span class="brand-heart">💕</span>
-      <p>Xonangizga qaytyapmiz…</p>
+      <p>Reconnecting to your room…</p>
     </div>
   </section>
 
@@ -78,13 +78,13 @@
         <span class="version-pill" id="version-pill-room"></span>
       </div>
       <div class="room-header-center">
-        <button id="room-link-btn" class="room-code room-link" title="Taklif havolasini nusxalash uchun bosing">
-          🔗 Havola yuborish
+        <button id="room-link-btn" class="room-code room-link" title="Click to copy the invite link">
+          🔗 Send invite link
         </button>
-        <span id="peer-status" class="peer-status offline">Sherigingiz kutilmoqda…</span>
+        <span id="peer-status" class="peer-status offline">Waiting for your partner…</span>
       </div>
       <div class="room-header-right">
-        <button id="leave-btn" class="btn btn-ghost">Chiqish</button>
+        <button id="leave-btn" class="btn btn-ghost">Leave</button>
       </div>
     </header>
 
@@ -95,30 +95,30 @@
 
           <div id="no-video-overlay" class="overlay">
             <form id="form-video" class="video-form">
-              <h3>Film yoki video havolasini qo‘ying</h3>
-              <p>YouTube havolasini yopishtiring — ikkalangizda ham bir vaqtda ishga tushadi.</p>
+              <h3>Add a movie or video link</h3>
+              <p>Paste a YouTube link — it starts playing for both of you at the same time.</p>
               <div class="video-form-row">
                 <input id="video-url" type="text" placeholder="https://youtube.com/watch?v=..." required />
-                <button type="submit" class="btn btn-primary">Yuklash</button>
+                <button type="submit" class="btn btn-primary">Load</button>
               </div>
               <span id="video-error" class="field-error hidden"></span>
             </form>
           </div>
         </div>
 
-        <button id="change-video-btn" class="btn btn-ghost change-video-btn hidden">Videoni almashtirish</button>
+        <button id="change-video-btn" class="btn btn-ghost change-video-btn hidden">Change video</button>
 
         <div id="camera-dock">
           <div class="cam-tile" id="local-tile">
             <video id="local-video" autoplay muted playsinline></video>
-            <span class="cam-label">Siz</span>
+            <span class="cam-label">You</span>
           </div>
           <!-- remote peer tiles are inserted here dynamically by client.js -->
         </div>
 
         <div class="call-controls">
-          <button id="toggle-mic" class="call-btn" title="Mikrofon">🎤</button>
-          <button id="toggle-cam" class="call-btn" title="Kamera">📷</button>
+          <button id="toggle-mic" class="call-btn" title="Microphone">🎤</button>
+          <button id="toggle-cam" class="call-btn" title="Camera">📷</button>
         </div>
       </div>
 
@@ -128,8 +128,8 @@
         </div>
         <div id="chat-messages" class="chat-messages"></div>
         <form id="chat-form" class="chat-form" autocomplete="off">
-          <input id="chat-input" maxlength="500" placeholder="Xabar yozing…" autocomplete="off" />
-          <button type="submit" class="send-btn" title="Yuborish">➤</button>
+          <input id="chat-input" maxlength="500" placeholder="Type a message…" autocomplete="off" />
+          <button type="submit" class="send-btn" title="Send">➤</button>
         </form>
       </aside>
     </main>
@@ -141,13 +141,13 @@
 
 <div id="link-modal" class="modal-overlay hidden">
   <div class="modal-box">
-    <h3>💌 Taklif havolasi</h3>
-    <p>Bu havolani sevganingizga yuboring — u bosishi bilan xonaga qo‘shiladi.</p>
+    <h3>💌 Invite link</h3>
+    <p>Send this link to your partner — they'll join the room as soon as they click it.</p>
     <div class="modal-row">
       <input id="link-modal-input" type="text" readonly />
-      <button id="link-modal-copy" class="btn btn-primary">Nusxalash</button>
+      <button id="link-modal-copy" class="btn btn-primary">Copy</button>
     </div>
-    <button id="link-modal-close" class="btn btn-ghost modal-close">Yopish</button>
+    <button id="link-modal-close" class="btn btn-ghost modal-close">Close</button>
   </div>
 </div>
 

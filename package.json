@@ -1,13 +1,19 @@
 {
   "name": "luvu",
   "version": "1.0.0",
-  "description": "Luvu — birga film ko'rish, chat va video-qo'ng'iroq uchun shaxsiy xona",
+  "description": "Luvu — a private room to watch movies together, chat, and video call",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js"
   },
-  "keywords": ["watch-party", "webrtc", "socket.io", "video-chat", "youtube-sync"],
+  "keywords": [
+    "watch-party",
+    "webrtc",
+    "socket.io",
+    "video-chat",
+    "youtube-sync"
+  ],
   "author": "Bunyod Xayitov",
   "license": "MIT",
   "type": "commonjs",

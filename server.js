@@ -77,9 +77,9 @@ app.get('/api/ice-servers', (req, res) => {
 const rooms = new Map();
 
 function sanitizeName(raw) {
-  if (typeof raw !== 'string') return 'Mehmon';
+  if (typeof raw !== 'string') return 'Guest';
   const trimmed = raw.trim().slice(0, MAX_NAME_LENGTH);
-  return trimmed.length ? trimmed : 'Mehmon';
+  return trimmed.length ? trimmed : 'Guest';
 }
 
 function createRoom() {
@@ -126,7 +126,7 @@ io.on('connection', (socket) => {
   socket.on('create-room', (payload, ack) => {
     if (typeof ack !== 'function') return;
     if (roomsCreatedBySocket >= MAX_ROOMS_PER_SOCKET) {
-      ack({ ok: false, error: 'Juda ko‘p xona yaratildi. Sahifani yangilab qayta urinib ko‘ring.' });
+      ack({ ok: false, error: 'Too many rooms created. Refresh the page and try again.' });
       return;
     }
     roomsCreatedBySocket++;
@@ -150,7 +150,7 @@ io.on('connection', (socket) => {
     const room = rooms.get(code);
 
     if (!room) {
-      ack({ ok: false, error: 'Bunday xona topilmadi.' });
+      ack({ ok: false, error: 'No room found with that code.' });
       return;
     }
 
@@ -170,7 +170,7 @@ io.on('connection', (socket) => {
     }
 
     if (room.users.size >= MAX_USERS_PER_ROOM) {
-      ack({ ok: false, error: `Xona allaqachon to‘lgan (ko‘pi bilan ${MAX_USERS_PER_ROOM} kishi).` });
+      ack({ ok: false, error: `This room is full (max ${MAX_USERS_PER_ROOM} people).` });
       return;
     }
 
@@ -191,7 +191,7 @@ io.on('connection', (socket) => {
     const text = typeof payload?.text === 'string' ? payload.text.slice(0, MAX_MESSAGE_LENGTH).trim() : '';
     if (!text) return;
 
-    const name = room.users.get(socket.id)?.name || 'Mehmon';
+    const name = room.users.get(socket.id)?.name || 'Guest';
     const message = { id: socket.id, name, text, ts: Date.now() };
     room.messages.push(message);
     if (room.messages.length > MAX_HISTORY) room.messages.shift();
@@ -260,5 +260,5 @@ io.on('connection', (socket) => {
 });
 
 httpServer.listen(PORT, () => {
-  console.log(`Luvu ${PORT}-portda ishlamoqda: http://localhost:${PORT}`);
+  console.log(`Luvu running on port ${PORT}: http://localhost:${PORT}`);
 });
