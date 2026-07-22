@@ -101,6 +101,8 @@
     viewLanding.classList.remove('hidden');
     formCreate.reset();
     formJoin.reset();
+    formJoin.classList.add('hidden');
+    document.getElementById('landing-cards').classList.add('single');
   }
 
   function setPeerStatus(online, label) {
@@ -548,12 +550,15 @@
     copyToClipboard(link, 'Taklif havolasi nusxalandi 💌 — endi qizingizga yuboring');
   });
 
-  // If opened via an invite link (?room=CODE), prefill the join form.
+  // Joining is only possible via an invite link (?room=CODE) — there's no
+  // manual code entry, so the join card stays hidden until a link supplies one.
   function prefillJoinFromUrl() {
     const params = new URLSearchParams(location.search);
     const code = params.get('room');
     if (!code) return;
     document.getElementById('join-code').value = code.trim().toUpperCase();
+    document.getElementById('form-join').classList.remove('hidden');
+    document.getElementById('landing-cards').classList.remove('single');
     document.getElementById('join-name').focus();
     showToast('Taklif havolasi orqali keldingiz — ismingizni kiriting 💕');
     history.replaceState({}, '', location.pathname);

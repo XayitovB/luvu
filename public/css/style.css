@@ -131,6 +131,20 @@ input {
   .landing-cards { grid-template-columns: 1fr; }
 }
 
+.landing-cards.single {
+  grid-template-columns: 1fr;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.card-footnote {
+  margin: 10px 0 0;
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+
 .card {
   background: linear-gradient(160deg, var(--card), var(--card-2));
   border: 1px solid var(--border);

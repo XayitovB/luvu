@@ -28,24 +28,24 @@
 
       <div id="landing-error" class="error-banner hidden" role="alert"></div>
 
-      <div class="landing-cards">
+      <div id="landing-cards" class="landing-cards single">
         <form id="form-create" class="card">
           <h2>Xona yaratish</h2>
-          <p class="card-hint">Yangi xona oching va havolani sevganingizga yuboring.</p>
+          <p class="card-hint">Yangi xona oching va taklif havolasini sevganingizga yuboring.</p>
           <label for="create-name">Ismingiz</label>
           <input id="create-name" name="name" type="text" maxlength="24" placeholder="Masalan: Diyor" required />
           <button type="submit" class="btn btn-primary">
             <span class="btn-label">Xona ochish</span>
           </button>
+          <p class="card-footnote">Xonaga qo‘shilish faqat taklif havolasi orqali bo‘ladi — kod qo‘lda kiritilmaydi.</p>
         </form>
 
-        <form id="form-join" class="card">
+        <form id="form-join" class="card hidden">
           <h2>Xonaga qo‘shilish</h2>
-          <p class="card-hint">Sizga yuborilgan 6 xonali kodni kiriting.</p>
+          <p class="card-hint">Sizni taklif havolasi orqali chaqirishdi — ismingizni kiriting.</p>
           <label for="join-name">Ismingiz</label>
           <input id="join-name" name="name" type="text" maxlength="24" placeholder="Masalan: Nilufar" required />
-          <label for="join-code">Xona kodi</label>
-          <input id="join-code" name="code" type="text" maxlength="6" placeholder="MASALAN: 7K9XQ2" autocapitalize="characters" required />
+          <input id="join-code" name="code" type="hidden" />
           <button type="submit" class="btn btn-secondary">
             <span class="btn-label">Qo‘shilish</span>
           </button>
