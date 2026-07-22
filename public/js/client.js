@@ -280,10 +280,22 @@
   }
 
   // ---------- WebRTC (mesh camera call: one RTCPeerConnection per remote person) ----------
+  // Modest capture resolution: keeps the initial bitrate/CPU load low on a slow
+  // connection instead of asking for (then having to downscale from) full HD.
+  const VIDEO_CONSTRAINTS = {
+    width: { ideal: 640, max: 1280 },
+    height: { ideal: 480, max: 720 },
+    frameRate: { ideal: 24, max: 30 },
+  };
+  const MAX_VIDEO_BITRATE = 800_000; // ~800kbps ceiling, plenty for the resolution above
+
   function ensureLocalMedia() {
     if (!localMediaPromise) {
       localMediaPromise = navigator.mediaDevices
-        .getUserMedia({ video: true, audio: true })
+        .getUserMedia({
+          video: VIDEO_CONSTRAINTS,
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        })
         .then((stream) => {
           localStream = stream;
           localVideo.srcObject = stream;
@@ -322,6 +334,16 @@
     return { tile, video, empty, label };
   }
 
+  // Cap the outgoing video bitrate and prefer dropping resolution (not framerate)
+  // when bandwidth gets tight, so a slow connection stays smooth instead of choppy.
+  function applyLowBandwidthVideoParams(sender) {
+    const params = sender.getParameters();
+    if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
+    params.encodings[0].maxBitrate = MAX_VIDEO_BITRATE;
+    params.degradationPreference = 'maintain-framerate';
+    sender.setParameters(params).catch(() => {});
+  }
+
   function getOrCreatePeer(peerId, name) {
     let entry = peers.get(peerId);
     if (entry) {
@@ -333,7 +355,10 @@
     const pc = new RTCPeerConnection(RTC_CONFIG);
 
     if (localStream) {
-      localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
+      localStream.getTracks().forEach((track) => {
+        const sender = pc.addTrack(track, localStream);
+        if (track.kind === 'video') applyLowBandwidthVideoParams(sender);
+      });
     }
 
     pc.ontrack = (event) => {
