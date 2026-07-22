@@ -690,3 +690,62 @@ input {
 }
 
 .toast.hidden { opacity: 0; pointer-events: none; }
+
+/* ===================== LINK MODAL ===================== */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 5, 18, 0.65);
+  backdrop-filter: blur(4px);
+  padding: 20px;
+}
+
+.modal-box {
+  background: linear-gradient(160deg, var(--card), var(--card-2));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  max-width: 440px;
+  width: 100%;
+  box-shadow: var(--shadow);
+}
+
+.modal-box h3 {
+  margin: 0 0 6px;
+  font-family: 'Poppins', sans-serif;
+}
+
+.modal-box p {
+  margin: 0 0 16px;
+  color: var(--text-dim);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.modal-row {
+  display: flex;
+  gap: 8px;
+}
+
+.modal-row input {
+  flex: 1;
+  min-width: 0;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 11px 13px;
+  color: var(--text);
+  font-size: 13.5px;
+  outline: none;
+}
+.modal-row input:focus { border-color: var(--accent); }
+
+.modal-close {
+  width: 100%;
+  margin-top: 12px;
+}

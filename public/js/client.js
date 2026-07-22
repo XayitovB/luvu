@@ -15,6 +15,10 @@
   const roomCodeBtn = document.getElementById('room-code-btn');
   const roomCodeValue = document.getElementById('room-code-value');
   const roomLinkBtn = document.getElementById('room-link-btn');
+  const linkModal = document.getElementById('link-modal');
+  const linkModalInput = document.getElementById('link-modal-input');
+  const linkModalCopyBtn = document.getElementById('link-modal-copy');
+  const linkModalCloseBtn = document.getElementById('link-modal-close');
   const peerStatusEl = document.getElementById('peer-status');
   const leaveBtn = document.getElementById('leave-btn');
 
@@ -544,10 +548,33 @@
     copyToClipboard(roomCode, 'Xona kodi nusxalandi ✨');
   });
 
+  function showLinkModal(link) {
+    linkModalInput.value = link;
+    linkModal.classList.remove('hidden');
+    linkModalInput.focus();
+    linkModalInput.select();
+  }
+
+  function hideLinkModal() {
+    linkModal.classList.add('hidden');
+  }
+
+  // Always show the link itself (not just a silent clipboard write) so joining
+  // still works even if the browser blocks/ignores clipboard access entirely.
   roomLinkBtn.addEventListener('click', () => {
-    if (!roomCode) return;
-    const link = `${location.origin}/?room=${roomCode}`;
+    const link = `${location.origin}/?room=${roomCode || ''}`;
+    showLinkModal(link);
     copyToClipboard(link, 'Taklif havolasi nusxalandi 💌 — endi qizingizga yuboring');
+  });
+
+  linkModalCopyBtn.addEventListener('click', () => {
+    linkModalInput.select();
+    copyToClipboard(linkModalInput.value, 'Nusxalandi ✨');
+  });
+
+  linkModalCloseBtn.addEventListener('click', hideLinkModal);
+  linkModal.addEventListener('click', (e) => {
+    if (e.target === linkModal) hideLinkModal();
   });
 
   // Joining is only possible via an invite link (?room=CODE) — there's no
