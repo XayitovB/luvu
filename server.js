@@ -3,8 +3,10 @@ const express = require('express');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 const { customAlphabet } = require('nanoid');
+const { version } = require('./package.json');
 
 const PORT = process.env.PORT || 3000;
+const GIT_COMMIT = process.env.GIT_COMMIT || 'dev';
 const ROOM_CODE_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'; // no 0/O/1/I confusion
 const makeRoomCode = customAlphabet(ROOM_CODE_ALPHABET, 6);
 
@@ -21,6 +23,10 @@ const io = new Server(httpServer, {
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
+
+app.get('/api/version', (req, res) => {
+  res.json({ version, commit: GIT_COMMIT });
+});
 
 // In-memory room store: code -> { users: Map<socketId, {name}>, video: {...} }
 const rooms = new Map();

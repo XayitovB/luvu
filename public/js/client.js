@@ -39,6 +39,14 @@
   const chatInput = document.getElementById('chat-input');
 
   const toastEl = document.getElementById('toast');
+  const versionBadge = document.getElementById('version-badge');
+
+  fetch('/api/version')
+    .then((r) => r.json())
+    .then(({ version, commit }) => {
+      versionBadge.textContent = `Luvu v${version} · ${commit}`;
+    })
+    .catch(() => {});
 
   // ---------- State ----------
   let myName = '';
@@ -344,6 +352,66 @@
     sender.setParameters(params).catch(() => {});
   }
 
+  // Polls WebRTC stats to show a live quality dot per tile and, if the
+  // connection is genuinely struggling, suggests switching to audio-only.
+  function monitorConnectionQuality(pc, tile) {
+    const dot = document.createElement('span');
+    dot.className = 'quality-dot quality-good';
+    dot.title = 'Ulanish sifati';
+    tile.appendChild(dot);
+
+    let prevLost = 0;
+    let prevReceived = 0;
+    let badStreak = 0;
+    let warnedOnce = false;
+
+    const timer = setInterval(async () => {
+      if (pc.connectionState === 'closed') {
+        clearInterval(timer);
+        return;
+      }
+      try {
+        const stats = await pc.getStats();
+        let lost = null;
+        let received = null;
+        stats.forEach((report) => {
+          if (report.type === 'inbound-rtp' && report.kind === 'video') {
+            lost = report.packetsLost || 0;
+            received = report.packetsReceived || 0;
+          }
+        });
+        if (lost === null) return; // no inbound video yet
+
+        const deltaLost = Math.max(0, lost - prevLost);
+        const deltaReceived = Math.max(0, received - prevReceived);
+        prevLost = lost;
+        prevReceived = received;
+
+        const total = deltaLost + deltaReceived;
+        const lossRatio = total > 0 ? deltaLost / total : 0;
+
+        let level = 'good';
+        if (lossRatio > 0.08) level = 'bad';
+        else if (lossRatio > 0.03) level = 'warn';
+        dot.className = 'quality-dot quality-' + level;
+
+        if (level === 'bad') {
+          badStreak++;
+          if (badStreak >= 3 && !warnedOnce) {
+            warnedOnce = true;
+            showToast('Internet sekin ko‘rinmoqda — kamerani o‘chirib, faqat ovozli suhbatlashsangiz sifat yaxshilanadi 📶', 6500);
+          }
+        } else {
+          badStreak = 0;
+        }
+      } catch (e) {
+        // getStats can transiently fail during renegotiation; ignore
+      }
+    }, 4000);
+
+    return timer;
+  }
+
   function getOrCreatePeer(peerId, name) {
     let entry = peers.get(peerId);
     if (entry) {
@@ -378,7 +446,9 @@
       }
     };
 
-    entry = { pc, tile, video, empty, label };
+    const qualityTimer = monitorConnectionQuality(pc, tile);
+
+    entry = { pc, tile, video, empty, label, qualityTimer };
     peers.set(peerId, entry);
     return entry;
   }
@@ -414,6 +484,7 @@
   function removePeer(peerId) {
     const entry = peers.get(peerId);
     if (!entry) return;
+    if (entry.qualityTimer) clearInterval(entry.qualityTimer);
     entry.pc.close();
     entry.tile.remove();
     peers.delete(peerId);
